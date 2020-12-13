@@ -37,10 +37,7 @@ Library Example
     -O2
     -Wall
     -Wincomplete-patterns
-    -fobject-code
     -fllvm
-    -fdicts-strict
-
 
 
   hs-source-dirs:
