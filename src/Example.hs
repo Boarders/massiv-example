@@ -1,48 +1,36 @@
-{-# language OverloadedStrings #-}
-{-# language LambdaCase        #-}
-{-# language ScopedTypeVariables #-}
-{-# language DeriveGeneric #-}
-{-# language TemplateHaskell #-}
-{-# language MultiParamTypeClasses #-}
-{-# language TypeFamilies #-}
-{-# language BangPatterns #-}
+{-# OPTIONS_GHC -ddump-simpl   #-}
+{-# OPTIONS_GHC -ddump-to-file #-}
+
+
+{-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE LambdaCase            #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeFamilies          #-}
 module Example where
 
-import qualified Data.ByteString.Char8 as ByteString
-import Data.ByteString.Char8 (ByteString)
-
-import Data.Vector.Unboxed (Vector)
-import qualified Data.Vector.Unboxed as Vector
-import Data.Vector.Unboxed.Mutable (MVector)
-import qualified Data.Vector.Unboxed.Mutable as Mutable
-import Control.Monad.ST
-import qualified Data.Text as Text
-import GHC.Generics (Generic)
-import Control.DeepSeq
-import Data.Vector.Unboxed.Deriving (derivingUnbox)
-import qualified VectorBuilder.Builder as Builder
-import qualified VectorBuilder.Vector  as Builder
-import Control.Arrow ((&&&))
-import Text.Builder as TextBuilder
-import Data.Foldable(traverse_)
-import Data.Word (Word8)
-import Data.Coerce
-
-import qualified Data.Massiv.Array as Massiv
-import qualified Data.Massiv.Array as Massiv
-import Data.Massiv.Array (Ix2(..), Sz(..), U(..), DW, Value(..))
-import Control.Applicative (liftA2)
-import Control.Monad (filterM)
-
-import Unsafe.Coerce
+import           Data.ByteString.Char8        (ByteString)
+import qualified Data.ByteString.Char8        as ByteString
+import qualified Data.Vector.Unboxed          as Vector
+import           Control.Applicative          (liftA2)
+import           Control.Arrow                ((&&&))
+import           Data.Massiv.Array            (Ix2 (..), Sz (..), U (..))
+import qualified Data.Massiv.Array            as Massiv
+import           Data.Vector.Unboxed.Deriving (derivingUnbox)
+import           Data.Word                    (Word8)
+import           GHC.Generics                 (Generic)
+import           Unsafe.Coerce
+import qualified VectorBuilder.Builder        as Builder
+import qualified VectorBuilder.Vector         as Builder
 
 data Position =
     Empty
   | Occupied
   | Floor
   deriving (Eq, Generic, Show)
-
-
 
 {-# inline fromW8 #-}
 fromW8 :: Word8 -> Position
@@ -89,11 +77,10 @@ buildRow bs = ByteString.foldl' fromEntry mempty bs
       'L' -> acc <> Builder.singleton Empty
       '.' -> acc <> Builder.singleton Floor
       '#' -> acc <> Builder.singleton Occupied
-      c   -> error $ "buildRow: unexpected character: " <> [c] 
+      c   -> error $ "buildRow: unexpected character: " <> [c]
 
 s1 :: Massiv.Array U Ix2 Position -> Int
 s1 = countOccupied . (updateUntilEq update)
-
 
 countOccupied ::
   Massiv.Array U Ix2 Position -> Int
@@ -110,15 +97,14 @@ updateUntilEq upFun =
   Massiv.iterateUntil
   (const (==))
   (const upFun)
- 
+
 update :: Massiv.Array U Ix2 Position -> Massiv.Array U Ix2 Position
 update =
   Massiv.compute . Massiv.mapStencil border updateStencil
-  
+
 border :: Massiv.Border Position
 border = Massiv.Fill Floor
 --{-# inline border #-}
-
 
 updateStencil :: Massiv.Stencil Ix2 Position Position
 updateStencil =
@@ -127,7 +113,7 @@ updateStencil =
       chair =  get (0 :. 0)
       isOcc c = fromEnum . (== Occupied) <$> (get c)
       occ :: Massiv.Value Int
-      !occ = 
+      !occ =
         (  isOcc (-1 :. -1) + isOcc (-1 :. 0) + isOcc (-1 :. 1) +
            isOcc ( 0 :. -1)                   + isOcc ( 0 :. 1) +
            isOcc ( 1 :. -1) + isOcc ( 1 :. 0) + isOcc ( 1 :. 1)
